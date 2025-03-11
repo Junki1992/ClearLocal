@@ -36,7 +36,7 @@ for file in files:
             break
 
     # フォルダパスを作成
-    destination_path = os.path.join(downloads_path, destination_folder) 
+    destination_path = os.path.join(downloads_path, destination_folder)
 
     # フォルダがなければ作成
     os.makedirs(destination_path, exist_ok=True)
