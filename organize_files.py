@@ -1,48 +1,57 @@
 import os
 import shutil
+import argparse
 from pathlib import Path
 
-# Downloadsフォルダ内のパスを取得
-downloads_path = str(Path.home() / "Downloads")
+def organize_files(directory):
+    directory = Path(directory).expanduser() # '~' を展開して完全なパスに変換
+    if not directory.exists():
+        print(f"指定されたフォルダは見つかりませんでした: {directory}")
+        return
 
-# ファイル一覧を取得して表示
-print("Downloadsフォルダ内のファイル一覧")
+    # 分類マップ（拡張子ごとにフォルダを指定）
+    file_categories = {
+        "PDFs": [".pdf"],
+        "Images": [".jpg", ".jpeg", ".png", "webp"],
+        "Scripts": [".py", ".sh"],
+        "Texts": [".txt", ".md"],
+        "Videos": [".mp4", ".mov"],
+        "Others": [] # どこにも分類されないファイル用
+    }
 
-# 分類マップ（拡張子ごとにフォルダを指定）
-category_map = {
-    "PDFs": [".pdf"],
-    "Images": [".jpg", ".jpeg", ".png", "webp"],
-    "Scripts": [".py", ".sh"],
-    "Texts": [".txt", ".md"],
-    "Videos": [".mp4", ".mov"]
-}
+    log_path = directory / "moved_files.log"
 
-# その他をファイルを入れるフォルダ
-other_folder = "Others"
+    with open(log_path, "w") as log_file:
+        for file in directory.iterdir():
+            # ファイルのみを処理し、フォルダは無視
+            if file.is_file():  # この条件チェックを正しい位置に移動
+                dest_folder = "Others"
+                for category, extensions in file_categories.items():
+                    if file.suffix.lower() in extensions:
+                        dest_folder = category
+                        break
+                dest_folder_path = directory / dest_folder
+                dest_folder_path.mkdir(exist_ok=True)
 
-# ファイルの一覧を取得
-files = [f for f in os.listdir(downloads_path) if os.path.isfile(os.path.join(downloads_path, f))]
+                new_file_path = dest_folder_path / file.name
 
-# ファイルごとに処理
-for file in files:
-    file_path = os.path.join(downloads_path, file)
-    ext = os.path.splitext(file)[1].lower() # 拡張子を取得(小文字に変換)
+                ## **重複ファイルの処理**
+                counter = 1
+                while new_file_path.exists():
+                    new_file_path = dest_folder_path / f"{file.stem}_{counter}-{file.suffix}"
+                    counter += 1
 
-    # 拡張子にあったフォルダを探す
-    destination_folder = other_folder # デフォルトはOthers
-    for folder, extensions in category_map.items():
-        if ext in extensions:
-            destination_folder = folder
-            break
+                # ファイル移動
+                shutil.move(file, new_file_path)
 
-    # フォルダパスを作成
-    destination_path = os.path.join(downloads_path, destination_folder)
+                # ログに記録
+                log_file.write(f"{file} → {new_file_path}\n")
+    print(f"整理完了!ログ: {log_path}")
 
-    # フォルダがなければ作成
-    os.makedirs(destination_path, exist_ok=True)
+# argparseの設定
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="フォルダ内のファイルを拡張仕事に整理するスクリプト")
+    parser.add_argument("directory", help="整理するフォルダのパス")
+    args = parser.parse_args()
 
-    # ファイルを移動
-    shutil.move(file_path, os.path.join(destination_path, file))
-    print(f"Moved] {file} → {destination_path}/")
-
-print("整理完了！")
+    organize_files(args.directory)
